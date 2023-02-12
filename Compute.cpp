@@ -38,22 +38,24 @@ struct Field2D
 				for (int j = 0; j < m; j++)
 				{
 					double x = i * h, y = j * h;
-					if ((x - 10) * (x - 10) + (y - 5) * (y - 5) > 2 * 2)
+					if (i > 0 && i < n - 1)
+						phi[i][j] = 100.0 / n * i;
+					if (x > 3.5e-2 && x <= 6.5e-2 && y > 2.5e-2 && y < 4e-2)
 					{
-						sigma[i][j] = 0;
-						epsr[i][j] = 1;
+						sigma[i][j] = 1.5;
+						epsr[i][j] = 72;
 					}
 					else
 					{
 						sigma[i][j] = 0;
-						epsr[i][j] = 3;
+						epsr[i][j] = 1;
 					}
 				}
 			}
 			for (int j = 0; j < m; j++)
 			{
-				phi[0][j] = -30;
-				phi[n - 1][j] = 30;
+				phi[0][j] = 0;
+				phi[n - 1][j] = 100;
 			}
 		}
 	}
@@ -85,16 +87,38 @@ struct Field2D
 		} while (_max > 0.001);
 		return cnt;
 	}
+	void Evolve(double T)
+	{
+		for (double t = 0; t < T; t += dt)
+		{
+			SOR();
+			double Ex = (phi[(n / 2) + 1][m / 2] - phi[n / 2][m / 2]) / h;
+			cout << Ex << "\n";
+			for (int i = 1; i < n - 2; i++)
+			{
+				for (int j = 1; j < m - 2; j++)
+				{
+					double Ex = -(phi[i + 1][j] - phi[i][j]) / h;
+					double Ey = -(phi[i][j + 1] - phi[i][j]) / h;
+					rho[i + 1][j] += min(sigma[i + 1][j], sigma[i][j]) * Ex / h * dt;
+					rho[i][j] -= min(sigma[i + 1][j], sigma[i][j]) * Ex / h * dt;
+					rho[i][j + 1] += min(sigma[i][j + 1], sigma[i][j]) * Ey / h * dt;
+					rho[i][j] -= min(sigma[i][j + 1], sigma[i][j]) * Ey / h * dt;
+				}
+			}
+		}
+	}
 	void Print()
 	{
 		FILE *f = fopen("../f.txt", "w");
-		for (int i = 0; i < n - 1; i++)
+		for (int i = 1; i < n - 1; i++)
 		{
-			for (int j = 0; j < m - 1; j++)
+			for (int j = 1; j < m - 1; j++)
 			{
-				double Ex = (phi[i + 1][j] - phi[i][j]) / h;
-				double Ey = (phi[i][j + 1] - phi[i][j]) / h;
-				fprintf(f, "%lf ", sqrt(Ex * Ex + Ey * Ey));
+				double Ex = -(phi[i + 1][j] - phi[i][j]) / h;
+				double Ey = -(phi[i][j + 1] - phi[i][j]) / h;
+				fprintf(f, "%E ", sqrt(Ex * Ex + Ey * Ey));
+				//fprintf(f, "%E ", rho[i][j] * h);
 			}
 			fprintf(f, "\n");
 		}
@@ -103,8 +127,8 @@ struct Field2D
 
 int main()
 {
-	F.Init(20, 10, 0.1, 1);
-	cout << F.SOR() << endl;
+	F.Init(10e-2, 5e-2, 0.08e-2, 1e-11);
+	F.Evolve(1e-9);
 	F.Print();
 	return 0;
 }
