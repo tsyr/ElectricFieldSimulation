@@ -14,23 +14,24 @@ struct Field2D
 	double h; // block size (m)
 	vector<vector<double>> phi, sigma, epsr, rho;
 	// potential, conductivity, relativie permittivity, charge density
-
 	void Init(double l_n, double l_m, double _h, double _dt)
 	{
-		n = int(l_n / _h), m = int(l_m / _h), h = _h, dt = _dt;
-		phi.clear();
-		sigma.clear();
-		epsr.clear();
-		rho.clear();
-		vector<double> v(m);
-		for (int i = 0; i < m; i++)
-			v[i] = 0;
-		for (int i = 0; i < n; i++)
-		{
-			phi.push_back(v);
-			sigma.push_back(v);
-			epsr.push_back(v);
-			rho.push_back(v);
+		{ // initialize
+			n = (int)ceil(l_n / _h), m = (int)ceil(l_m / _h), h = _h, dt = _dt;
+			phi.clear();
+			sigma.clear();
+			epsr.clear();
+			rho.clear();
+			vector<double> v(m);
+			for (int i = 0; i < m; i++)
+				v[i] = 0;
+			for (int i = 0; i < n; i++)
+			{
+				phi.push_back(v);
+				sigma.push_back(v);
+				epsr.push_back(v);
+				rho.push_back(v);
+			}
 		}
 		{ // setting
 			for (int i = 0; i < n; i++)
@@ -39,11 +40,16 @@ struct Field2D
 				{
 					double x = i * h, y = j * h;
 					if (i > 0 && i < n - 1)
-						phi[i][j] = 100.0 / n * i;
-					if (x > 3.5e-2 && x <= 6.5e-2 && y > 2.5e-2 && y < 4e-2)
+						phi[i][j] = 150.0 / n * i;
+					if (x > 3.5e-2 && x <= 6.5e-2 && y > 2.5e-2 && y < 3.5e-2)
 					{
 						sigma[i][j] = 1.5;
 						epsr[i][j] = 72;
+					}
+					else if (y > 2.6e-2 && y <= 2.5e-2)
+					{
+						sigma[i][j] = 0;
+						epsr[i][j] = 4;
 					}
 					else
 					{
@@ -59,7 +65,7 @@ struct Field2D
 			}
 		}
 	}
-	int SOR()
+	int SOR(double thres)
 	{
 		int cnt = 0;
 		double _max;
@@ -84,15 +90,15 @@ struct Field2D
 				}
 			}
 			cnt++;
-		} while (_max > 0.001);
+		} while (_max > thres);
 		return cnt;
 	}
 	void Evolve(double T)
 	{
 		for (double t = 0; t < T; t += dt)
 		{
-			SOR();
-			double Ex = (phi[(n / 2) + 1][m / 2] - phi[n / 2][m / 2]) / h;
+			SOR(0.001);
+			double Ex = (phi[(n / 2) + 1][int(3e-2 / h)] - phi[n / 2][int(3e-2 / h)]) / h;
 			cout << Ex << "\n";
 			for (int i = 1; i < n - 2; i++)
 			{
